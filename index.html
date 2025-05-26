@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flowmodoro Timer</title>
+    <!-- Import Nunito font from Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="background.css">
+    <style>
+        body {
+            /* Update default font to Nunito while keeping system fonts as fallback */
+            font-family: 'Nunito', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            color: #666;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            position: relative;
+            overflow: hidden; /* Prevent background blobs from causing scrollbars */
+        }
+
+        /* Container styles - remove redundant backgrounds */
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: fixed;
+            top: 45%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 2;
+            width: 100%;
+            height: auto;
+        }
+
+        /* Timer container styles - maintain single card appearance */
+        .timer-pip-container {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(8px);
+            position: relative;
+        }
+
+        .timer-wrapper {
+            display: flex;
+            gap: 40px;
+            position: relative;
+        }
+
+        /* Restore original fixed position elements */
+        .sound-control {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            border: 1px solid #ddd;
+            cursor: pointer;
+            padding: 8px;
+            color: #666;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 14px;
+            z-index: 10;
+            border-radius: 6px;
+            transition: all 0.3s ease;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            opacity: 1;
+            min-width: 85px;
+            justify-content: center;
+            backdrop-filter: blur(8px);
+        }
+
+        .workflow-selector {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            min-width: 320px;
+            z-index: 10;
+            backdrop-filter: blur(8px);
+        }
+
+        .icon-button {
+            position: fixed;
+            top: 20px;
+            right: 150px;
+            background: rgba(255, 255, 255, 0.95);
+            border: 1px solid #ddd;
+            cursor: pointer;
+            padding: 8px;
+            color: #666;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            z-index: 10;
+            border-radius: 6px;
+            transition: all 0.3s ease;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            min-width: 85px;
+            justify-content: center;
+            backdrop-filter: blur(8px);
+            visibility: visible;
+            opacity: 1;
+        }
+
+        .icon-button.hidden {
+            visibility: hidden;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .pip-control {
+            position: fixed;
+            top: 70px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            border: 1px solid #ddd;
+            cursor: pointer;
+            padding: 8px 12px;
+            color: #666;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            z-index: 10;
+            border-radius: 6px;
+            transition: all 0.3s ease;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            opacity: 1;
+            min-width: 120px;
+            backdrop-filter: blur(8px);
+        }
+
+        .timer-section {
+            text-align: center;
+        }
+        .timer {
+            font-size: 48px;
+            font-weight: 300; /* Light weight for the timer */
+            margin: 20px 0;
+        }
+        button {
+            font-family: inherit; /* Ensure buttons use Nunito */
+            font-weight: 700; /* Changed to bold */
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            color: white;
+            margin: 0 5px;
+            box-shadow: 0 6px 12px rgba(0,0,0,0.15),
+                       0 4px 4px rgba(0,0,0,0.1),
+                       0 -2px 0 rgba(255,255,255,0.2) inset,
+                       0 2px 0 rgba(0,0,0,0.1) inset;
+            transform: translateY(0);
+            position: relative;
+            overflow: hidden;
+        }
+        button::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 50%;
+            background: linear-gradient(180deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0) 100%);
+            pointer-events: none;
+            border-radius: 8px 8px 0 0;
+        }
+        button:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px rgba(0,0,0,0.2),
+                       0 8px 8px rgba(0,0,0,0.15),
+                       0 -2px 0 rgba(255,255,255,0.2) inset,
+                       0 2px 0 rgba(0,0,0,0.1) inset;
+        }
+        button:active {
+            transform: translateY(2px);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1),
+                       0 1px 2px rgba(0,0,0,0.05),
+                       0 -1px 0 rgba(255,255,255,0.2) inset,
+                       0 1px 0 rgba(0,0,0,0.1) inset;
+            transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        #workButton {
+            background: #ff4d4d;
+            border: 1px solid #ff3333;
+        }
+        #breakButton {
+            background: #4d94ff;
+            border: 1px solid #3385ff;
+        }
+        #pauseButton {
+            background: #666666;
+            border: 1px solid #595959;
+            display: none;
+        }
+        .label {
+            font-size: 18px;
+            margin-bottom: 10px;
+            color: #666;
+            font-weight: 700; /* Changed to bold */
+        }
+        .buttons {
+            margin-top: 20px;
+        }
+        .ratio-container {
+            text-align: center;
+            margin-bottom: 30px;
+            transform: translateY(-20px);
+            font-size: 24px;
+            font-weight: 700; /* Changed to bold */
+            height: 36px;
+            color: #000; /* Changed to black */
+        }
+        .ratio-label {
+            display: inline;
+            color: inherit; /* Will inherit black color */
+            font-weight: inherit; /* Will inherit bold weight */
+        }
+        .ratio-value {
+            display: inline;
+            margin-left: 5px;
+            color: inherit; /* Will inherit black color */
+            font-weight: inherit; /* Will inherit bold weight */
+        }
+        .sound-text {
+            font-weight: 500;
+            margin-right: 2px;
+        }
+        .sound-icon {
+            font-size: 20px;
+            line-height: 1;
+            display: flex;
+            align-items: center;
+        }
+        .workflow-title {
+            font-size: 16px;
+            font-weight: 700; /* Changed to bold */
+            color: #000; /* Changed to black */
+            margin-bottom: 15px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #eee;
+        }
+        .workflow-option {
+            display: flex;
+            align-items: center;
+            margin: 10px 0;
+            cursor: pointer;
+            white-space: nowrap;
+            padding-right: 10px;
+        }
+        .workflow-option input[type="radio"] {
+            margin-right: 12px;
+            flex-shrink: 0;
+        }
+        /* Split workflow text into label and value parts */
+        .workflow-label {
+            color: #000; /* Black color for labels */
+            font-weight: 700; /* Bold weight for labels */
+        }
+        .workflow-value {
+            color: #444; /* Original color for values */
+            font-weight: 500; /* Original weight for values */
+            margin-left: 5px;
+        }
+        .custom-inputs {
+            display: none;
+            margin-top: 10px;
+            padding-left: 25px;
+        }
+        .custom-inputs.visible {
+            display: block;
+        }
+        .custom-inputs input {
+            width: 60px;
+            padding: 5px;
+            margin: 0 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .custom-inputs label {
+            font-size: 14px;
+            color: #666;
+        }
+        .pomodoro-container {
+            text-align: center;
+            margin-top: 30px;
+            min-height: 40px;
+            transition: all 0.3s ease;
+            opacity: 1;
+            transform: translateY(0);
+            width: 100%;
+            max-width: 250px;
+            margin-left: auto;
+            margin-right: auto;
+            visibility: visible;
+        }
+        
+        .pomodoro-icons {
+            font-size: 24px;
+            min-height: 30px;
+            margin-top: 10px;
+            display: grid;
+            grid-template-columns: repeat(5, 1fr); /* Always 5 columns */
+            gap: 10px;
+            justify-content: center;
+            grid-auto-rows: min-content; /* Allow multiple rows */
+            align-items: center;
+        }
+
+        .progress-emoji {
+            position: relative;
+            width: 30px;
+            height: 30px;
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            margin: 0 auto;
+            padding: 2px; /* Add slight padding between icons */
+        }
+
+        .progress-emoji-base {
+            position: absolute;
+            opacity: 0.3;
+            z-index: 1;
+        }
+
+        .progress-emoji-fill {
+            position: absolute;
+            z-index: 2;
+            clip-path: inset(calc(100% - var(--fill-percent, 0%)) 0 0 0);
+            transition: clip-path 0.3s linear;
+            opacity: 1;
+        }
+
+        .icon-preview {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 10px 0;
+            padding: 10px;
+            background: rgba(0,0,0,0.05);
+            border-radius: 6px;
+        }
+
+        .preview-label {
+            font-size: 14px;
+            color: #666;
+        }
+
+        #previewEmoji {
+            font-size: 24px;
+        }
+
+        .icon-selector {
+            position: fixed;
+            top: 20px;
+            right: 140px;
+            background: white;
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            display: none;
+            z-index: 11;
+        }
+
+        .icon-selector.visible {
+            display: block;
+            margin-top: 40px;
+        }
+
+        .icon-option {
+            cursor: pointer;
+            padding: 5px 10px;
+            border-radius: 4px;
+            transition: background-color 0.2s;
+        }
+
+        .icon-option:hover {
+            background-color: #f5f5f5;
+        }
+
+        .icon-label {
+            font-size: 14px;
+            font-weight: 500;
+            color: #666;
+            margin-right: 2px;
+        }
+
+        .icon-emoji {
+            font-size: 20px;
+            line-height: 1;
+            display: flex;
+            align-items: center;
+        }
+
+        .custom-icon-input {
+            width: 60px;
+            padding: 5px;
+            margin: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .pomodoro-container.hidden {
+            opacity: 0;
+            visibility: hidden;
+            height: 40px;
+            margin: 0;
+            position: absolute;
+        }
+
+        .pip-text {
+            font-weight: 500;
+            margin-left: 5px;
+        }
+
+        .pip-icon {
+            font-size: 20px;
+        }
+
+        /* Style adjustments for PiP mode */
+        :root:has(::backdrop) .timer-pip-container {
+            padding: 10px;
+            transform: scale(0.9);
+            background: white;
+        }
+
+        :root:has(::backdrop) .timer-wrapper {
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+
+        :root:has(::backdrop) .timer {
+            font-size: 36px;
+            margin: 10px 0;
+        }
+
+        :root:has(::backdrop) .label {
+            font-size: 16px;
+        }
+
+        :root:has(::backdrop) button {
+            padding: 6px 16px;
+            font-size: 14px;
+        }
+
+        :root:has(::backdrop) .buttons {
+            margin-top: 10px;
+            display: flex;
+            gap: 5px;
+            justify-content: center;
+        }
+
+        /* Make sure buttons in PiP are not fixed position */
+        :root:has(::backdrop) .sound-control,
+        :root:has(::backdrop) .icon-button,
+        :root:has(::backdrop) .pip-control {
+            position: static;
+        }
+
+        /* Reset button styles */
+        .reset-button {
+            position: absolute;
+            right: -90px; /* Adjusted from -85px to -90px to move 5px right */
+            top: 50%;
+            transform: translateY(-50%);
+            background: white;
+            border: 1px solid #ddd;
+            cursor: pointer;
+            padding: 8px 12px;
+            color: #666;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            border-radius: 6px;
+            transition: all 0.3s ease;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            white-space: nowrap;
+            z-index: 5;
+        }
+
+        .reset-button:hover {
+            box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+            transform: translateY(calc(-50% - 1px));
+            border-color: #ccc;
+        }
+
+        .reset-button:active {
+            transform: translateY(calc(-50% + 1px));
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+
+        .reset-icon {
+            font-size: 18px;
+            line-height: 1;
+            transform: scaleX(-1); /* Flip the arrow to point counterclockwise */
+        }
+
+        /* PiP specific reset button positioning */
+        :root:has(::backdrop) .reset-button {
+            position: static;
+            transform: none;
+            margin-top: 15px;
+            width: fit-content;
+        }
+
+        :root:has(::backdrop) .reset-button:hover {
+            transform: translateY(-1px);
+        }
+
+        :root:has(::backdrop) .reset-button:active {
+            transform: translateY(1px);
+        }
+
+        /* Error message styling */
+        .error-message {
+            color: #ff4757;
+            font-weight: 600;
+            font-size: 14px;
+            margin-top: 8px;
+            opacity: 0;
+            transform: translateY(-10px);
+            transition: all 0.3s ease;
+            text-align: center;
+            height: 0;
+        }
+
+        .error-message.visible {
+            opacity: 1;
+            transform: translateY(0);
+            height: auto;
+            margin-bottom: 10px;
+        }
+
+        /* Global error message styling */
+        .global-error {
+            position: fixed;
+            top: -100px; /* Start above viewport */
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #ff4757;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            text-align: center;
+            min-width: 300px;
+        }
+
+        .global-error.visible {
+            top: 20px;
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <!-- Add global error message container at the top of body -->
+    <div id="globalError" class="global-error"></div>
+
+    <div id="animated-background"></div>
+
+    <button id="soundToggle" class="sound-control">
+        <span class="sound-icon">🔊</span>
+        <span id="soundText" class="sound-text">Sound On</span>
+    </button>
+
+    <button id="pipButton" class="pip-control">
+        <span class="pip-icon">📺</span>
+        <span class="pip-text">Minimize Timer (PiP)</span>
+    </button>
+
+    <div class="workflow-selector">
+        <div class="workflow-title">Select Workflow</div>
+        <label class="workflow-option">
+            <input type="radio" name="workflow" value="25-5" checked>
+            <span class="workflow-label">Classic:</span>
+            <span class="workflow-value">5:1 (e.g., 25 min work / 5 min break)</span>
+        </label>
+        <label class="workflow-option">
+            <input type="radio" name="workflow" value="40-10">
+            <span class="workflow-label">4:1</span>
+            <span class="workflow-value">(e.g., 40 min work / 10 min break)</span>
+        </label>
+        <label class="workflow-option">
+            <input type="radio" name="workflow" value="45-15">
+            <span class="workflow-label">3:1</span>
+            <span class="workflow-value">(e.g., 45 min work / 15 min break)</span>
+        </label>
+        <label class="workflow-option">
+            <input type="radio" name="workflow" value="custom">
+            <span class="workflow-label">Custom ratio</span>
+        </label>
+        <div class="custom-inputs" id="customInputs">
+            <div>
+                <label>Work: </label>
+                <input type="number" id="customWork" min="1" max="120" value="25"> minutes
+            </div>
+            <div style="margin-top: 8px;">
+                <label>Break: </label>
+                <input type="number" id="customBreak" min="1" max="30" value="5"> minutes
+            </div>
+        </div>
+    </div>
+
+    <button id="iconButton" class="icon-button">
+        <span class="icon-label">Icon:</span>
+        <span class="icon-emoji">🍅</span>
+    </button>
+
+    <div id="iconSelector" class="icon-selector">
+        <div class="icon-option" data-icon="🍅">🍅 Tomato</div>
+        <div class="icon-option" data-icon="⭐">⭐ Star</div>
+        <div class="icon-option" data-icon="✅">✅ Checkmark</div>
+        <div class="icon-option" data-icon="🎯">🎯 Target</div>
+        <div class="icon-option" data-icon="💪">💪 Flex</div>
+        <div class="icon-preview">
+            <span class="preview-label">Preview:</span>
+            <div id="previewEmoji" class="progress-emoji">
+                <span class="progress-emoji-base">🍅</span>
+                <span class="progress-emoji-fill">🍅</span>
+            </div>
+        </div>
+        <div style="margin-top: 10px; padding: 5px;">
+            <input type="text" id="customIcon" class="custom-icon-input" placeholder="Custom" maxlength="2">
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="ratio-container">
+            <span class="ratio-label">Current Focus Ratio:</span>
+            <span id="ratioDisplay" class="ratio-value">5:1</span>
+        </div>
+        <div class="timer-pip-container" id="timerPipContainer">
+            <div class="timer-wrapper">
+                <div class="timer-section">
+                    <div class="label">Work Timer</div>
+                    <div id="workTimer" class="timer">00:00</div>
+                    <div class="buttons">
+                        <button id="workButton">Start Work</button>
+                        <button id="pauseButton">Pause</button>
+                    </div>
+                </div>
+                <div class="timer-section">
+                    <div class="label">Break Timer</div>
+                    <div id="breakTimer" class="timer">00:00</div>
+                    <button id="breakButton">Take Break</button>
+                </div>
+            </div>
+            <button id="resetButton" class="reset-button">
+                <span class="reset-icon">↻</span>
+                Reset
+            </button>
+        </div>
+        <div class="pomodoro-container">
+            <div id="pomodoroIcons" class="pomodoro-icons"></div>
+        </div>
+    </div>
+
+    <script src="background.js"></script>
+    <script src="sounds.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
