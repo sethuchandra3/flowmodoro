@@ -1,0 +1,135 @@
+#animated-background {
+    position: fixed;
+    top: -20vh;
+    left: -20vw;
+    width: 140vw;
+    height: 140vh;
+    z-index: 1;
+    overflow: hidden;
+    background: rgba(30, 30, 30, 0.1); /* Slight dark base to avoid pure white */
+}
+
+.blob {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(80px);
+    opacity: 0.85; /* Increased base opacity */
+    mix-blend-mode: multiply;
+    animation: float var(--float-duration, 45s) ease-in-out infinite;
+    transform-origin: center;
+    will-change: transform;
+}
+
+.blob-inner {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    opacity: 0;
+    transition: opacity 8s cubic-bezier(0.4, 0, 0.2, 1);
+    mix-blend-mode: multiply;
+}
+
+.blob-inner.current {
+    opacity: 0.8;
+}
+
+.blob-inner.next {
+    opacity: 0;
+}
+
+/* Different animation paths for variety */
+.blob:nth-child(2n) {
+    animation: float-alt var(--float-duration, 50s) ease-in-out infinite;
+    mix-blend-mode: soft-light;
+    filter: blur(100px);
+    opacity: 0.9;
+}
+
+.blob:nth-child(3n) {
+    animation: float-alt-2 var(--float-duration, 55s) ease-in-out infinite;
+    mix-blend-mode: color-burn;
+    filter: blur(90px);
+    opacity: 0.8;
+}
+
+.blob:nth-child(4n) {
+    animation: float-alt-3 var(--float-duration, 60s) ease-in-out infinite;
+    mix-blend-mode: multiply;
+    filter: blur(120px);
+    opacity: 0.95;
+}
+
+/* Base layer blobs (first 5) */
+.blob:nth-child(-n+5) {
+    mix-blend-mode: multiply;
+    filter: blur(150px);
+    z-index: 0;
+}
+
+/* Main layer blobs */
+.blob:nth-child(n+6) {
+    z-index: 1;
+}
+
+@keyframes float {
+    0%, 100% {
+        transform: translate(0, 0) scale(1) rotate(0deg);
+    }
+    25% {
+        transform: translate(10%, 10%) scale(1.1) rotate(90deg);
+    }
+    50% {
+        transform: translate(-5%, 15%) scale(1.05) rotate(180deg);
+    }
+    75% {
+        transform: translate(-10%, -5%) scale(1.15) rotate(270deg);
+    }
+}
+
+@keyframes float-alt {
+    0%, 100% {
+        transform: translate(0, 0) scale(1) rotate(0deg);
+    }
+    25% {
+        transform: translate(-15%, 5%) scale(1.15) rotate(-90deg);
+    }
+    50% {
+        transform: translate(5%, -10%) scale(1.1) rotate(-180deg);
+    }
+    75% {
+        transform: translate(10%, 15%) scale(1.05) rotate(-270deg);
+    }
+}
+
+@keyframes float-alt-2 {
+    0%, 100% {
+        transform: translate(0, 0) scale(1) rotate(0deg);
+    }
+    25% {
+        transform: translate(15%, -10%) scale(1.1) rotate(120deg);
+    }
+    50% {
+        transform: translate(-10%, -5%) scale(1.15) rotate(240deg);
+    }
+    75% {
+        transform: translate(5%, 15%) scale(1.05) rotate(360deg);
+    }
+}
+
+@keyframes float-alt-3 {
+    0%, 100% {
+        transform: translate(0, 0) scale(1) rotate(0deg);
+    }
+    25% {
+        transform: translate(-5%, 15%) scale(1.15) rotate(-120deg);
+    }
+    50% {
+        transform: translate(15%, 5%) scale(1.1) rotate(-240deg);
+    }
+    75% {
+        transform: translate(-10%, -10%) scale(1.05) rotate(-360deg);
+    }
+} 
