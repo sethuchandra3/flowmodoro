@@ -108,8 +108,13 @@ class FlowTimer {
     updateButtonStates() {
         // Update button states based on current timer state
         this.workButton.disabled = this.breakInterval !== null;
-        this.breakButton.disabled = !this.hasWorkedSinceStart || (this.breakSeconds <= 0 && !this.breakInterval);
+        this.breakButton.disabled = !this.hasWorkedSinceStart && !this.breakInterval;
         this.pauseButton.style.display = this.workInterval ? 'inline-block' : 'none';
+
+        // Update button text based on current state
+        this.workButton.textContent = this.workInterval ? 'Stop Work' : 'Start Work';
+        this.breakButton.textContent = this.breakInterval ? 'Stop Break' : 'Take Break';
+        this.pauseButton.textContent = this.isPaused ? 'Resume' : 'Pause';
     }
 
     toggleWorkTimer() {
@@ -138,17 +143,11 @@ class FlowTimer {
                     this.updateWorkTimeDisplay();
                     this.updatePomodoroProgress();
 
-                    // Calculate break accumulation
+                    // Calculate break accumulation based on ratio
                     const breakAccumulationInterval = Math.ceil(this.currentRatio);
                     if (this.workSeconds % breakAccumulationInterval === 0) {
-                        if (this.breakSeconds < 0) {
-                            this.breakSeconds++;
-                            if (this.breakSeconds >= 0) {
-                                this.isBreakStopped = false;
-                            }
-                        } else if (!this.isBreakActive) {
-                            this.breakSeconds++;
-                        }
+                        // Always increment break time when working
+                        this.breakSeconds++;
                         this.updateBreakTimeDisplay();
                     }
                     
@@ -172,17 +171,13 @@ class FlowTimer {
                 return;
             }
 
-            // Validate break conditions
+            // Check if user has worked at all
             if (!this.hasWorkedSinceStart && this.workSeconds === 0) {
                 this.showError("You must work to earn break time!");
                 return;
             }
 
-            if (this.breakSeconds <= 0) {
-                this.showError("You need to work more to earn break time!");
-                return;
-            }
-
+            // Remove the check for negative break time to allow going into negative
             this.playSound('startBreak');
             this.isBreakActive = true;
             
@@ -192,25 +187,25 @@ class FlowTimer {
                 if (!this.isPaused) {
                     this.breakSeconds--;
                     
-                    if (this.breakSeconds === 0 && this.isBreakActive) {
+                    // Play sound only when transitioning to negative
+                    if (this.breakSeconds === -1) {
                         this.playSound('breakEndAlarm');
                     }
                     
                     this.updateBreakTimeDisplay();
                     this.updateRatioDisplay();
                     
+                    // Only count positive break time for ratio calculation
                     if (this.breakSeconds >= 0) {
                         this.totalBreakSeconds++;
-                    }
-
-                    // Auto-stop break when time runs out
-                    if (this.breakSeconds < 0) {
-                        this.stopBreakTimer();
                     }
                 }
             }, 1000);
 
-            this.updateButtonStates();
+            // Update button states and text
+            this.breakButton.textContent = 'Stop Break';
+            this.workButton.disabled = true;
+            this.pauseButton.style.display = 'none';
             
             if (this.pipWindow && !this.pipWindow.closed) {
                 this.updatePiPButtonStates();
@@ -375,39 +370,42 @@ class FlowTimer {
     }
 
     updateBreakTimeDisplay() {
-        if (this.breakSeconds < 0) {
-            this.breakTimer.style.color = '#ff4d4d';
-            this.breakTimer.textContent = this.formatTime(this.breakSeconds, true);
-            if (!this.breakInterval) {
-                this.breakButton.disabled = true;
-            }
-        } else {
-            this.breakTimer.style.color = '';
-            this.breakTimer.textContent = this.formatTime(this.breakSeconds);
-            this.breakButton.disabled = !this.hasWorkedSinceStart;
-        }
+        const isNegative = this.breakSeconds < 0;
+        const absSeconds = Math.abs(this.breakSeconds);
+        const mins = Math.floor(absSeconds / 60);
+        const secs = absSeconds % 60;
+        const timeString = `${isNegative ? '-' : ''}${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        
+        // Set color to red for negative time
+        this.breakTimer.style.color = isNegative ? '#ff4d4d' : '';
+        this.breakTimer.textContent = timeString;
+
+        // Enable break button if there's any break time or if already on break
+        this.breakButton.disabled = !this.hasWorkedSinceStart && !this.breakInterval;
 
         // Update PiP window if it exists
         if (this.pipWindow && !this.pipWindow.closed) {
             const pipBreakTimer = this.pipWindow.document.getElementById('breakTimer');
             if (pipBreakTimer) {
-                pipBreakTimer.textContent = this.breakTimer.textContent;
+                pipBreakTimer.textContent = timeString;
                 pipBreakTimer.style.color = this.breakTimer.style.color;
             }
         }
     }
 
     updateRatioDisplay() {
-        // Don't update the display - just calculate the actual ratio for internal use
+        // Calculate actual work-to-break ratio
         if (this.totalBreakSeconds === 0) {
             this.actualRatio = this.currentRatio;
             return;
         }
         
-        const ratio = this.workSeconds / this.totalBreakSeconds;
+        // Use absolute value of break seconds for ratio calculation
+        const effectiveBreakTime = Math.max(this.totalBreakSeconds, 1); // Avoid division by zero
+        const ratio = this.workSeconds / effectiveBreakTime;
         this.actualRatio = ratio;
 
-        // Check if we're maintaining the target ratio (for internal use)
+        // Check if maintaining target ratio
         const targetRatio = this.currentRatio;
         const lowerBound = targetRatio * 0.9;
         const upperBound = targetRatio * 1.1;
@@ -437,9 +435,10 @@ class FlowTimer {
         this.isBreakStopped = true;
         this.isBreakActive = false;
         
-        // Update button states in both windows
+        // Update button states and text
         this.breakButton.textContent = 'Take Break';
         this.workButton.disabled = false;
+        this.workButton.textContent = 'Start Work';
         this.updateBreakTimeDisplay();
         this.playSound('stopBreak');
 
@@ -687,8 +686,7 @@ class FlowTimer {
 
         if (pipBreakButton) {
             pipBreakButton.textContent = this.breakInterval ? 'Stop Break' : 'Take Break';
-            pipBreakButton.disabled = (!this.hasWorkedSinceStart && !this.breakInterval) || 
-                                    (this.breakSeconds <= 0 && !this.breakInterval);
+            pipBreakButton.disabled = (!this.hasWorkedSinceStart && !this.breakInterval);
         }
 
         if (pipPauseButton) {
@@ -720,44 +718,46 @@ class FlowTimer {
     }
 
     resetTimer() {
-        try {
-            // Stop any running intervals
-            if (this.workInterval) {
-                clearInterval(this.workInterval);
-                this.workInterval = null;
-            }
-            if (this.breakInterval) {
-                clearInterval(this.breakInterval);
-                this.breakInterval = null;
-            }
+        // Stop any running intervals
+        if (this.workInterval) {
+            clearInterval(this.workInterval);
+            this.workInterval = null;
+        }
+        if (this.breakInterval) {
+            clearInterval(this.breakInterval);
+            this.breakInterval = null;
+        }
 
-            // Reset all state variables
-            this.workSeconds = 0;
-            this.breakSeconds = 0;
-            this.totalBreakSeconds = 0;
-            this.isPaused = false;
-            this.isBreakStopped = false;
-            this.isBreakActive = false;
-            this.hasWorkedSinceStart = false;
-            this.pomodoroCount = 0;
+        // Reset all state variables
+        this.workSeconds = 0;
+        this.breakSeconds = 0;
+        this.totalBreakSeconds = 0;
+        this.isPaused = false;
+        this.isBreakStopped = false;
+        this.isBreakActive = false;
+        this.hasWorkedSinceStart = false;
+        this.pomodoroCount = 0;
 
-            // Update all displays
-            this.updateWorkTimeDisplay();
-            this.updateBreakTimeDisplay();
-            this.updateRatioDisplay();
-            this.updatePomodoroIcons();
-            this.updateButtonStates();
+        // Reset button text and states
+        this.workButton.textContent = 'Start Work';
+        this.breakButton.textContent = 'Take Break';
+        this.pauseButton.textContent = 'Pause';
+        this.workButton.disabled = false;
+        this.breakButton.disabled = true;
+        this.pauseButton.style.display = 'none';
 
-            // Play confirmation sound
-            this.playSound('ting');
+        // Update all displays
+        this.updateWorkTimeDisplay();
+        this.updateBreakTimeDisplay();
+        this.updateRatioDisplay();
+        this.updatePomodoroIcons();
 
-            // Update PiP window if it exists
-            if (this.pipWindow && !this.pipWindow.closed) {
-                this.updatePiPButtonStates();
-            }
-        } catch (error) {
-            console.error('Error in resetTimer:', error);
-            this.showError('An error occurred while resetting the timer');
+        // Play confirmation sound
+        this.playSound('ting');
+
+        // Update PiP window if it exists
+        if (this.pipWindow && !this.pipWindow.closed) {
+            this.updatePiPButtonStates();
         }
     }
 }
